@@ -4,6 +4,11 @@ import { substr } from 'runes2';
 let deal = async (ctx) => {
 	const { username } = ctx.req.param();
 	let res = await fetch(`https://t.me/s/${username}`);
+	// let res = await fetch(`http://127.0.0.1:3100/admin/to?t=https://t.me/s/${username}&x=0`);
+
+	// let result = await res.json();
+	// res = result.order10Back
+	
 	let title = '';
 	let link = `https://t.me/s/${username}`;
 	let description = '';
@@ -31,6 +36,27 @@ let deal = async (ctx) => {
 		.on('.tgme_widget_message_bubble > .tgme_widget_message_text', {
 			text(text) {
 				tgme_widget_message_texts[tgme_widget_message_texts.length - 1] += text.text;
+			},
+		})
+		.on('.tgme_widget_message_bubble > .tgme_widget_message_text > a', {
+			element(element) {
+				let link = element.getAttribute('href')
+				console.log(link);
+				const match_wx = link.match(/^(https?:\/\/mp\.weixin\.qq\.com\/s)/);
+				if (match_wx) {
+					tgme_widget_message_texts[tgme_widget_message_texts.length - 1] += `<br> <a href="${link}">微信</a><br>`;
+				}
+				// https://telegra.ph
+				const match_telegra = link.match(/^https?:\/\/telegra\.ph\/.+/);
+				if (match_telegra) {
+					tgme_widget_message_texts[tgme_widget_message_texts.length - 1] += `<br> <a href="${link}">Telegra</a><br>`;
+				}
+				// https://daily.zhihu.com
+				const match_zhihu = link.match(/^https?:\/\/daily\.zhihu\.com\/story\/\d+/);
+				if (match_zhihu) {
+					tgme_widget_message_texts[tgme_widget_message_texts.length - 1] += `<br> <a href="${link}">知乎日报</a><br>`;
+				}
+
 			},
 		})
 		.on('.tgme_widget_message_bubble .tgme_widget_message_photo_wrap', {
@@ -69,7 +95,10 @@ let deal = async (ctx) => {
 				src_links.push(`https://t.me/${username}/${data_post}`);
 			},
 		})
-		.transform(res);
+		// .transform(new Response(res)); // 确保传入 Response 对象
+		.transform(res); // 确保传入 Response 对象
+
+	// 使用 .text() 获取转换后的 HTML
 	await new_res.text();
 	let items = [];
 	src_links = src_links.reverse();
@@ -79,7 +108,16 @@ let deal = async (ctx) => {
 			continue;
 		}
 		let title = tgme_widget_message_texts[i].replace(/<br>/g, ' ');
-		title = title.replace(/<b>|<\/b>|<img.*>/g, '');
+		title = title.replace(/<b>|<\/b>|<img.*?>|<a.*?>|<\/a>/g, '');
+		title = title.replace("原文", '');
+		title = title.replace("微信原文", '');
+		title = title.replace("知乎日报", '');
+		title = title.replace("链接", '');
+		title = title.replace("频道大全", '');
+		title = title.replace("Telegra", '');
+		title = title.replace("Telegraph", ''); 
+		title = title.replace("|", '');
+		title = title.trim()
 		if (title.length > 100) {
 			title = substr(title, 0, 100) + '...';
 		} else if (title.trim().length === 0) {
